@@ -29,6 +29,14 @@ class PetSpider(object):
         res = requests.get(url, headers=self.headers)
         return res.text
 
+    def scrape_pet_cat_introduction(self, page=1):
+        """抓取数据"""
+        url = "http://www.yc.cn/api/searchPetData.do?petRaceId=2&pageNum={num}&pageSize=8&keyword=&baseInfo=&detailInfo=&jsonCallback=jQuery11130879826298049732_1554727081494&_=1554727081497".format(
+            num=page)
+        print(url)
+        res = requests.get(url, headers=self.headers)
+        return res.text
+
     def loads_jsonp(self, jsonp_data):
         """
         解析jsonp数据格式为json
@@ -43,7 +51,7 @@ class PetSpider(object):
         data = self.loads_jsonp(data)
         return data['list']
 
-    def insert_data_to_db(self, data):
+    def insert_data_to_db(self, data, pet_type='dog'):
         """插入数据库"""
         db = pymysql.connect("localhost", "root", "root", "pet")
         cursor = db.cursor()
@@ -77,16 +85,19 @@ class PetSpider(object):
                 life_habit = get_value(breed_info, '生活习性')
                 suitable_population = get_value(breed_info, '适养人群')
 
+                banner = get_value(tmp, 'showImage')
+
                 sql = "INSERT INTO `pet_introduction`(name,eng_name,iq_rank,\
                         location,weight,life,price,height,hair_color,pet_func,\
                         body_type,wool_length,alias_name,maintenance_knowledge,\
                         domesticating_knowledge,variety_introduction,origin_of_development,\
-                        identification,life_habit,suitable_population) \
-                       VALUES ('%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s')" % \
+                        identification,life_habit,suitable_population,\
+                        pet_type,banner) \
+                       VALUES ('%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s', '%s', '%s', '%s')" % \
                       (name, eng_name, iq_rank, location, weight, life, price, height, hair_color, pet_func, body_type,
                        wool_length, alias_name,
                        maintenance_knowledge, domesticating_knowledge, variety_introduction, origin_of_development,
-                       identification, life_habit, suitable_population)
+                       identification, life_habit, suitable_population, pet_type, banner)
                 cursor.execute(sql)
             db.commit()
             print('success')
@@ -99,8 +110,13 @@ class PetSpider(object):
 
 if __name__ == '__main__':
     pet = PetSpider()
-    # data = pet.scrape_pet_introduction(page=1)
-    for i in range(2, 20):
+    # dog
+    for i in range(1, 20):
         data = pet.scrape_pet_introduction(page=i)
         json_list = pet.get_pet_list(data)
         pet.insert_data_to_db(json_list)
+    # cat
+    for i in range(1, 20):
+        data = pet.scrape_pet_cat_introduction(page=i)
+        json_list = pet.get_pet_list(data)
+        pet.insert_data_to_db(json_list, pet_type='cat')
